@@ -59,6 +59,17 @@ pipeline {
                 bat "docker build -t i-${userName}-master:${BUILD_NUMBER} --no-cache -f Dockerfile ."
             }
         }
+		
+		 stage ("PushtoDTR") {
+                    steps {
+                        echo "PushtoDTR step"
+                         bat "docker tag i-${userName}-master:${BUILD_NUMBER} ${registry}:i-${userName}-${BRANCH_NAME}-${BUILD_NUMBER}"
+                         bat "docker tag i-${userName}-master:${BUILD_NUMBER} ${registry}:i-${userName}-${BRANCH_NAME}-latest"
+
+                        bat "docker push ${registry}:i-${userName}-master-${BUILD_NUMBER}"
+                        bat "docker push ${registry}:i-${userName}-master-latest"
+                    }
+                }
 
     }
 
