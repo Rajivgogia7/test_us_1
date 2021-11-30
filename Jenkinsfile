@@ -28,9 +28,6 @@ pipeline {
     	stage ("nuget restore") {
             steps {
 		    
-                //Initial message
-                echo "Deployment pipeline started for - ${BRANCH_NAME} branch"
-
                 echo "Nuget Restore step"
                 bat "dotnet restore"
             }
@@ -59,7 +56,7 @@ pipeline {
         stage ("Docker Image") {
             steps {
                 echo "Docker Image step"
-                bat "docker build -t i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} --no-cache -f Dockerfile ."
+                bat "docker build -t i-${userName}-master:${BUILD_NUMBER} --no-cache -f Dockerfile ."
             }
         }
 
