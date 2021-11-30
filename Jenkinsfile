@@ -35,19 +35,6 @@ pipeline {
                 bat "dotnet restore"
             }
         }
-		
-		stage('Start sonarqube analysis'){
-            when {
-                branch "master"
-            }
-
-            steps {
-				  echo "Start sonarqube analysis step"
-                  withSonarQubeEnv('Test_Sonar') {
-                   bat "dotnet ${scannerHome}\\SonarScanner.MSBuild.dll begin /k:sonar-${userName} /n:sonar-${userName} /v:1.0"
-                  }
-            }
-        }
 
         stage('Code build') {
             steps {
@@ -62,24 +49,7 @@ pipeline {
             }
         }
 
-		stage('Stop sonarqube analysis'){
-             when {
-                branch "master"
-            }
-            
-			steps {
-				   echo "Stop sonarqube analysis"
-                   withSonarQubeEnv('Test_Sonar') {
-                   bat "dotnet ${scannerHome}\\SonarScanner.MSBuild.dll end"
-                   }
-            }
-        }
-
-        stage ("Release artifact") {
-            when {
-                branch "develop"
-            }
-
+	    stage ("Release artifact") {
             steps {
                 echo "Release artifact step"
                 bat "dotnet publish -c Release -o ${appName}/app/${userName}"
@@ -88,69 +58,12 @@ pipeline {
 
         stage ("Docker Image") {
             steps {
-                //For master branch, publish before creating docker image
-                script {
-                    if (BRANCH_NAME == "master") {
-                        bat "dotnet publish -c Release -o ${appName}/app/${userName}"
-                    }
-                }
                 echo "Docker Image step"
                 bat "docker build -t i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} --no-cache -f Dockerfile ."
             }
         }
 
-        stage ("Containers") {
-            failFast true
-            parallel {
-                stage ("PrecontainerCheck") {
-                    steps {
-                        echo "PrecontainerCheck step"
-                        script {
-						
-							if (env.BRANCH_NAME == 'master') {
-                                env.port = 7200
-                            } else {
-                                env.port = 7300
-                            }
-						
-							env.containerId = bat(script: "docker ps -a -f publish=${port} -q", returnStdout: true).trim().readLines().drop(1).join('')
-                            if (env.containerId != '') {
-                                echo "Stopping and removing container running on ${port}"
-                                bat "docker stop $env.containerId"
-                                bat "docker rm $env.containerId"
-                            } else {
-                                echo "No container running on ${port}  port."
-                            }
-                        }
-                    }
-                }
-
-                stage ("PushtoDTR") {
-                    steps {
-                        echo "PushtoDTR step"
-                         bat "docker tag i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} ${registry}:i-${userName}-${BRANCH_NAME}-${BUILD_NUMBER}"
-                         bat "docker tag i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} ${registry}:i-${userName}-${BRANCH_NAME}-latest"
-
-                        bat "docker push ${registry}:i-${userName}-${BRANCH_NAME}-${BUILD_NUMBER}"
-                        bat "docker push ${registry}:i-${userName}-${BRANCH_NAME}-latest"
-                    }
-                }
-            }
-        }
-
-        stage ("Docker deployment") {
-            steps {
-                echo "Docker deployment step"
-                bat "docker run --name c-${userName}-${BRANCH_NAME} -d -p ${port}:80 ${registry}:i-${userName}-${BRANCH_NAME}-latest"
-            }
-        }
-
-        // stage('Kubernetes Deployment') {
-		 // steps{
-		     // bat "kubectl apply -f deployment.yaml"
-		 // }
-		//}
-   	 }
+    }
 
 	 post { 
 			always { 
